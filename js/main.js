@@ -1,7 +1,7 @@
 import * as THREE from './three.module.js'
 import { CharacterController } from './controller.js'
 import { ThirdPersonCamera } from './camera.js'
-import { makeChunk } from './terrain.js'
+import { Terrain } from './terrain.js'
 
 function main() {
     // Set up three.js
@@ -37,15 +37,19 @@ function main() {
     }
 
     // Add the ground
-    const geometry = makeChunk();
-    const material = new THREE.MeshStandardMaterial({
-        color: 0xe77d11, 
-        roughness: 200,
+    // const material = new THREE.MeshStandardMaterial({
+    //     color: 0xe77d11, 
+    //     roughness: 200,
+    //     flatShading: true,
+    // });
+    const material = new THREE.MeshPhongMaterial({
+        color: 0xe77d11,
         flatShading: true,
-    });
-    const ground = new THREE.Mesh(geometry, material);
-    ground.position.y = 0;
-    scene.add(ground);
+        reflectivity: 0.05,
+        shininess: 5
+    })
+    const terrain = new Terrain(material);
+    scene.add(terrain.target);
 
     // Add the player
     // TODO: move player mesh loading to controller constructor
@@ -67,6 +71,13 @@ function main() {
         renderer.render(scene, camera);
         player.update(deltaTime);
         thirdPersonCamera.update(deltaTime);
+
+        player.target.position.y = terrain.height(
+            player.target.position.x,
+            player.target.position.z
+        ) + 0.5;
+
+        terrain.update(player.target.position.x, player.target.position.z);
 
         requestAnimationFrame(render);
     }
