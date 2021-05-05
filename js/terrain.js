@@ -1,23 +1,25 @@
-import * as THREE from './three.module.js'
-import { BufferGeometryUtils } from './BufferGeometryUtils.js'
+import * as THREE from '../build/three.module.js'
 
 const CHUNK_SIZE = 50;
 const GRID_SIZE = 25;
-const CHUNK_RADIUS = 300;
+const CHUNK_RADIUS = 350;
 
 export class Terrain {
-    constructor(material) {
-        this.perlin = new Perlin(0);
+    constructor(material, seed=0) {
+        this.perlin = new Perlin(seed);
         this.material = material;
         this.chunks = [];
-
+        this.chunksToUnload = [];
         this.update(0, 0);
     }
 
     height(x, z) {
         return ( 
-            5.0 * this.perlin.noise(x, z, 1 / 8.9)
-            + 10.0 * this.perlin.noise(x, z, 1 / 812)
+            0.08 * this.perlin.noise(x, z, 1 / 1.29)
+            + 1.1 * this.perlin.noise(x, z, 1 / 7.6)
+            + 5.0 * this.perlin.noise(x, z, 1 / 38.7)
+            + 20.0 * this.perlin.noise(x, z, 1 / 92.8)
+            + 100.0 * this.perlin.noise(x, z, 1 / 529)
         ) - 8;
     }
 
@@ -28,51 +30,32 @@ export class Terrain {
      */
     update(x, z) {
         // look to unload any that are far away
-        let has_changed = false;
-        const newchunks = [];
+        const newChunks = [];
         for (let chunk of this.chunks) {
             if ((chunk.x - x)**2 + (chunk.z - z)**2 > CHUNK_RADIUS**2) {
-                has_changed = true;
-                continue;
+                this.chunksToUnload.push(chunk);
+            } else {
+                newChunks.push(chunk);
             }
-            newchunks.push(chunk);
         }
-        this.chunks = newchunks;
+        this.chunks = newChunks;
 
         // look to load any that are close
         for (let dx = 0; dx < CHUNK_RADIUS; dx += (CHUNK_SIZE)) {
             for (let dz = 0; dz < CHUNK_RADIUS; dz += (CHUNK_SIZE)) {
                 if (dx**2 + dz**2 > CHUNK_RADIUS**2) break;
-                has_changed ||= this.loadChunk(x + dx, z + dz);
-                has_changed ||= this.loadChunk(x + dx, z - dz);
-                has_changed ||= this.loadChunk(x - dx, z + dz);
-                has_changed ||= this.loadChunk(x - dx, z - dz);
+                this.loadChunk(x + dx, z + dz);
+                this.loadChunk(x + dx, z - dz);
+                this.loadChunk(x - dx, z + dz);
+                this.loadChunk(x - dx, z - dz);
             }
         }
-
-        // update the geometry only if the chunks have changed
-        if (has_changed) {
-            console.log('haschanged!')
-            this.updateGeometry()
-}
-    }
-
-    updateGeometry() {
-        const geoms = [];
-        for (let chunk of this.chunks)
-            geoms.push(chunk.geometry);
-        
-        this.geometry = BufferGeometryUtils.mergeBufferGeometries(geoms);
-        this.geometry.attributes.position.needsUpdate = true;
-        this.geometry.computeBoundingBox();
-        this.geometry.computeBoundingSphere();
-        this.target = new THREE.Mesh(this.geometry, this.material);
     }
 
     loadChunk(x, z) {
         // round x, z to nearest multiple of 2 * CHUNK_SIZE
-        let rd_x = Math.round(x / (2 * CHUNK_SIZE));
-        let rd_z = Math.round(z / (2 * CHUNK_SIZE));
+        let rd_x = Math.round(x / (CHUNK_SIZE)) * (CHUNK_SIZE);
+        let rd_z = Math.round(z / (CHUNK_SIZE)) * (CHUNK_SIZE);
 
         // ensure chunk not loaded
         for (let chunk of this.chunks) {
@@ -81,26 +64,31 @@ export class Terrain {
         }
 
         // make new chunk geometry
+        // like https://github.com/mrdoob/three.js/blob/master/examples/webgl_geometry_dynamic.html
         const geometry = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE, GRID_SIZE, GRID_SIZE);
         geometry.rotateX(-Math.PI / 2);
         const position = geometry.attributes.position;
         for (let i = 0; i < position.count; i++) {
             const x = position.getX(i);
             const z = position.getZ(i);
-            const h = this.height(x, z);
+            const h = this.height(rd_x + x, rd_z + z);
             position.setY(i, h);
         }
 
+        const mesh = new THREE.Mesh(geometry, this.material);
+        mesh.position.x = rd_x;
+        mesh.position.z = rd_z;
+
         // add chunk to registry
-        this.chunks.push(
-            {"x": rd_x, "z": rd_z, "geometry": geometry}
-        );
+        this.chunks.push({
+            "x": rd_x, 
+            "z": rd_z, 
+            "mesh": mesh,
+            "needsLoaded": true
+        });
 
         return true;
     }
-
-    // unloadChunk() {
-    // }
 }
 
 class Perlin {
@@ -176,20 +164,6 @@ class Perlin {
         const itp0 = this.lerp(dist00, dist01, y - y0);
         const itp1 = this.lerp(dist10, dist11, y - y0);
         let alpha = this.lerp(itp0, itp1, x - x0);
-
-        // alpha appears to be in [-1, 1] -> scale to [0,1]
-        alpha = (alpha + 1) * 0.5;
         return alpha;
     }
-}
-
-function makeChunk() {
-    // following https://github.com/mrdoob/three.js/blob/master/examples/webgl_geometry_dynamic.html
-    const geometry = new THREE.PlaneGeometry(100, 100, 10, 10);
-    geometry.rotateX(-Math.PI / 2);
-    const position = geometry.attributes.position;
-    for (let i = 0; i < position.count; i++) {
-        position.setY(i, 5 * (Math.random() - 0.5));
-    }
-    return geometry;
 }

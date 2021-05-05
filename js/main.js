@@ -1,13 +1,18 @@
-import * as THREE from './three.module.js'
+import * as THREE from '../build/three.module.js'
 import { CharacterController } from './controller.js'
 import { ThirdPersonCamera } from './camera.js'
 import { Terrain } from './terrain.js'
+import { SkyLight } from './skylight.js'
+import { GUI } from '../build/dat.gui.module.js'
 
 function main() {
     // Set up three.js
     const canvas = document.getElementsByClassName("canvas")[0];
     const renderer = new THREE.WebGLRenderer({canvas});
     renderer.setSize(window.innerWidth, window.innerHeight, false);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.5;
 
     // Add a camera
     const fov = 80, near = 0.1, far = 1000; 
@@ -24,17 +29,22 @@ function main() {
 
     const scene = new THREE.Scene();
 
-    // Add some lights
-    {
-        const color = 0xFFFFFF;
-        const intensity = 1.5;
-        const light = new THREE.DirectionalLight(color, intensity);
-        light.position.set(-1, 2, 4);
-        scene.add(light);
+    // Add the sky
+    let sunlight = new SkyLight(75, 180, {
+        turbidity: 4.5,
+        rayleigh: 0.8,
+        mieCoefficient: 0.015,
+        mieDirectionalG: 0.4,
+        exposure: 0.36,
+        intensity: 2
+    });
+    scene.add( sunlight.sky );
+    scene.add( sunlight.light );
+    renderer.toneMappingExposure = sunlight.params.exposure;
 
-        const ambiance = new THREE.AmbientLight(0xFFFFFF, 0.5);
-        scene.add(ambiance);
-    }
+    // Add ambiant light
+    const ambiance = new THREE.AmbientLight(0xFFFFFF, 0.5);
+    scene.add(ambiance);
 
     // Add the ground
     // const material = new THREE.MeshStandardMaterial({
@@ -48,8 +58,13 @@ function main() {
         reflectivity: 0.05,
         shininess: 5
     })
-    const terrain = new Terrain(material);
-    scene.add(terrain.target);
+    const terrain = new Terrain(material, -100);
+    for (let c of terrain.chunks) {
+        if (c.needsLoaded) {
+            scene.add(c.mesh);
+            c.needsLoaded = false;
+        }
+    }
 
     // Add the player
     // TODO: move player mesh loading to controller constructor
@@ -60,7 +75,7 @@ function main() {
     scene.add(cube);
     cube.position.y = 1;
     const player = new CharacterController(cube);
-    const thirdPersonCamera = new ThirdPersonCamera(camera, player);
+    const thirdPersonCamera = new ThirdPersonCamera(camera, player, terrain);
 
     let lastFrameTime = 0;
     function render(time) {
@@ -78,10 +93,28 @@ function main() {
         ) + 0.5;
 
         terrain.update(player.target.position.x, player.target.position.z);
+        for (let c of terrain.chunksToUnload) 
+            unload(c.mesh);
+        terrain.chunksToUnload = [];
+        for (let c of terrain.chunks) {
+            if (c.needsLoaded) {
+                scene.add(c.mesh);
+                c.needsLoaded = false;
+            }
+        }
+
+        sunlight.update(deltaTime);
 
         requestAnimationFrame(render);
     }
     requestAnimationFrame(render);
+
+    function unload(mesh) {
+        // https://stackoverflow.com/a/40730686
+        scene.remove(mesh);
+        mesh.geometry.dispose();
+        mesh.material.dispose();
+    }
 }
 
 

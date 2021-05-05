@@ -1,17 +1,22 @@
-import * as THREE from './three.module.js'
+import * as THREE from '../build/three.module.js'
 
 export class ThirdPersonCamera {
-    constructor(camera, controller) {
+    constructor(camera, controller, terrain) {
         this.camera = camera;
         this.controller = controller;
+        this.terrain = terrain;
         this.currentPosition = new THREE.Vector3();
         this.currentLookAt = new THREE.Vector3();
     }
 
     calculateIdealOffset() {
-        const idealOffset = new THREE.Vector3(0, 2, -5);
+        const idealOffset = new THREE.Vector3(0, 0, -5);
         idealOffset.applyQuaternion(this.controller.Rotation);
         idealOffset.add(this.controller.Position);
+
+        const con_y = this.controller.Position.y;
+        const cam_y = this.terrain.height(idealOffset.x, idealOffset.z);
+        idealOffset.add(new THREE.Vector3(0, 2 + 0.75 * (cam_y - con_y), 0));
         return idealOffset;
     }
 
