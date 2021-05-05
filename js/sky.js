@@ -20,6 +20,8 @@ import * as jquery from '../build/jquery-3.6.0.js'
  * http://blenderartists.org/forum/showthread.php?245954-preethams-sky-impementation-HDR
  *
  * Three.js integration by zz85 http://twitter.com/blurspline
+ * 
+ * Obtained from https://github.com/mrdoob/three.js/blob/d4aa9e00ea29808534a3e082f602c544e5f2419c/examples/jsm/objects/Sky.js
 */
 
 class Sky extends Mesh {

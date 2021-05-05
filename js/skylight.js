@@ -1,5 +1,5 @@
 import * as THREE from '../build/three.module.js'
-import { Sky } from './threesky.js'
+import { Sky } from './sky.js'
 import { GUI } from '../build/dat.gui.module.js'
 
 const DAY_LENGTH = 20; // seconds

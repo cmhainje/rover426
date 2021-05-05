@@ -1,20 +1,41 @@
 import * as THREE from '../build/three.module.js'
+import { GLTFLoader } from './GLTFLoader.js';
 
 export class CharacterController {
-    constructor(target) {
+    constructor(params) {
         this.position = new THREE.Vector3();
         this.velocity = new THREE.Vector3();
         this.acceleration = new THREE.Vector3(1, 0.25, 50.0);
         this.deceleration = new THREE.Vector3(-0.0005, -0.0001, -5.0);
 
         this.input = new CharacterControllerInput();
-        this.target = target;
+        this.params = params;
+        this.load_model();
     }
 
     get Position() { return this.position; }
-    get Rotation() { return this.target.quaternion; }
+    get Rotation() { 
+        if (!this.target) {
+            return new THREE.Quaternion();
+        }
+        return this.target.quaternion; 
+    }
+
+    load_model() {
+        const loader = new GLTFLoader();
+        loader.load(
+            '../assets/SpaceRover.gltf',
+            (object) => {
+                this.target = object.scene;
+                this.target.scale.setScalar(0.3);
+                this.params.scene.add(this.target);
+            }
+        )
+    }
 
     update(time) {
+        if (!this.target)
+            return;
         // Compute velocity
         const velocity = this.velocity;
         const frameDeceleration = new THREE.Vector3(

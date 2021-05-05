@@ -16,7 +16,7 @@ export class ThirdPersonCamera {
 
         const con_y = this.controller.Position.y;
         const cam_y = this.terrain.height(idealOffset.x, idealOffset.z);
-        idealOffset.add(new THREE.Vector3(0, 2 + 0.75 * (cam_y - con_y), 0));
+        idealOffset.add(new THREE.Vector3(0, 3 + 0.75 * (cam_y - con_y), 0));
         return idealOffset;
     }
 

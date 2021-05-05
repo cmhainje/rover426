@@ -47,11 +47,6 @@ function main() {
     scene.add(ambiance);
 
     // Add the ground
-    // const material = new THREE.MeshStandardMaterial({
-    //     color: 0xe77d11, 
-    //     roughness: 200,
-    //     flatShading: true,
-    // });
     const material = new THREE.MeshPhongMaterial({
         color: 0xe77d11,
         flatShading: true,
@@ -67,14 +62,7 @@ function main() {
     }
 
     // Add the player
-    // TODO: move player mesh loading to controller constructor
-    const cube = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1, 1), 
-        new THREE.MeshPhongMaterial({color: 0x44aa88})
-    );
-    scene.add(cube);
-    cube.position.y = 1;
-    const player = new CharacterController(cube);
+    const player = new CharacterController({scene: scene});
     const thirdPersonCamera = new ThirdPersonCamera(camera, player, terrain);
 
     let lastFrameTime = 0;
@@ -84,6 +72,12 @@ function main() {
         lastFrameTime = time;
 
         renderer.render(scene, camera);
+
+        if (!player.target) { 
+            requestAnimationFrame(render);
+            return;
+        }
+
         player.update(deltaTime);
         thirdPersonCamera.update(deltaTime);
 
