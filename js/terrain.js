@@ -25,6 +25,19 @@ export class Terrain {
         ) - 8;
     }
 
+    normal(x, z) {
+        const dx = 2, dz = 2;
+        const height00 = this.height(x - dx, z - dz);
+        const height01 = this.height(x - dx, z + dz);
+        const height10 = this.height(x + dx, z - dz);
+        const height11 = this.height(x + dx, z + dz);
+
+        const vec00_11 = new THREE.Vector3( 2*dx, height11 - height00, 2*dx );
+        const vec01_10 = new THREE.Vector3( 2*dx, height10 - height01, -2*dx );
+        const norm = new THREE.Vector3().crossVectors(vec00_11, vec01_10).normalize();
+        return norm;
+    }
+
     /**
      * Updates the terrain depending on player position
      * @param {number} x    x-coordinate of player position
@@ -81,6 +94,8 @@ export class Terrain {
         const mesh = new THREE.Mesh(geometry, this.material);
         mesh.position.x = rd_x;
         mesh.position.z = rd_z;
+        mesh.receiveShadow = true;
+        mesh.castShadow = true;
 
         // add chunk to registry
         this.chunks.push({

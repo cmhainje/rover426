@@ -24,6 +24,18 @@ function main() {
     const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
     camera.position.set(0, 2, -5);
 
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+
+    renderer.shadowCameraNear = 0.1;
+    renderer.shadowCameraFar = camera.far;
+    renderer.shadowCameraFov = 80;
+
+    renderer.shadowMapBias = 0.0039;
+    renderer.shadowMapDarkness = 0.5;
+    renderer.shadowMapWidth = 1024;
+    renderer.shadowMapHeight = 1024;
+
     // Resize canvas when window is resized
     window.addEventListener('resize', () => {
         renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -53,6 +65,7 @@ function main() {
     // Add the ground
     const material = new THREE.MeshPhongMaterial({
         color: 0xbb491d,
+        flatShading: true,
         reflectivity: 0.05,
         shininess: 5
     })
@@ -65,7 +78,7 @@ function main() {
     }
 
     // Add the player
-    const player = new CharacterController({scene: scene});
+    const player = new CharacterController({scene: scene, terrain: terrain, sunlight: sunlight});
     const thirdPersonCamera = new ThirdPersonCamera(camera, player, terrain);
 
     let lastFrameTime = 0;
@@ -83,11 +96,6 @@ function main() {
 
         player.update(deltaTime);
         thirdPersonCamera.update(deltaTime);
-
-        player.target.position.y = terrain.height(
-            player.target.position.x,
-            player.target.position.z
-        ) + 0.5;
 
         terrain.update(player.target.position.x, player.target.position.z);
         for (let c of terrain.chunksToUnload) 

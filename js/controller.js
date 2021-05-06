@@ -28,6 +28,15 @@ export class CharacterController {
             (object) => {
                 this.target = object.scene;
                 this.target.scale.setScalar(0.3);
+                this.target.traverse((node) => {
+                    if (node.isMesh) {
+                        node.castShadow = true;
+                        node.receiveShadow = true;
+                    }
+                });
+
+                this.params.sunlight.light.target = this.target;
+
                 this.params.scene.add(this.target);
             }
         )
@@ -92,6 +101,19 @@ export class CharacterController {
         // Update position
         this.target.position.add(forward);
         this.target.position.add(sideways);
+
+        // Handle terrain collisions
+        this.target.position.y = this.params.terrain.height(
+            this.target.position.x,
+            this.target.position.z
+        ) + 0.05;
+
+        // Match terrain slope
+        const up = new THREE.Vector3(0, 1, 0).applyQuaternion(this.target.quaternion).normalize();
+        const norm = this.params.terrain.normal(this.target.position.x, this.target.position.z).normalize();
+        const norm_rot = new THREE.Quaternion().setFromUnitVectors(up, norm);
+        this.target.quaternion.premultiply(norm_rot);
+
         this.position.copy(this.target.position);
     }
 };
