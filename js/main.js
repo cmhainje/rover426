@@ -4,15 +4,19 @@ import { ThirdPersonCamera } from './camera.js'
 import { Terrain } from './terrain.js'
 import { SkyLight } from './skylight.js'
 import { GUI } from '../build/dat.gui.module.js'
+import Stats from '../build/stats.module.js'
 
 function main() {
     // Set up three.js
     const canvas = document.getElementsByClassName("canvas")[0];
-    const renderer = new THREE.WebGLRenderer({canvas});
+    const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
     renderer.setSize(window.innerWidth, window.innerHeight, false);
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.5;
+
+    const stats = new Stats();
+    document.body.appendChild(stats.dom);
 
     // Add a camera
     const fov = 80, near = 0.1, far = 1000; 
@@ -36,20 +40,19 @@ function main() {
         mieCoefficient: 0.015,
         mieDirectionalG: 0.4,
         exposure: 0.36,
-        intensity: 2
+        intensity: 1.8
     });
-    scene.add( sunlight.sky );
-    scene.add( sunlight.light );
+    scene.add(sunlight.sky);
+    scene.add(sunlight.light);
     renderer.toneMappingExposure = sunlight.params.exposure;
 
     // Add ambiant light
-    const ambiance = new THREE.AmbientLight(0xFFFFFF, 0.5);
-    scene.add(ambiance);
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.15));
+    scene.add(new THREE.DirectionalLight(0xFFFFFF, 0.15));
 
     // Add the ground
     const material = new THREE.MeshPhongMaterial({
-        color: 0xe77d11,
-        flatShading: true,
+        color: 0xbb491d,
         reflectivity: 0.05,
         shininess: 5
     })
@@ -98,6 +101,8 @@ function main() {
         }
 
         sunlight.update(deltaTime);
+
+        stats.update();
 
         requestAnimationFrame(render);
     }

@@ -1,8 +1,10 @@
 import * as THREE from '../build/three.module.js'
 
-const CHUNK_SIZE = 50;
-const GRID_SIZE = 25;
-const CHUNK_RADIUS = 350;
+const CHUNK_SIZE = 100;
+const GRID_SIZE = 20;
+
+const LOAD_RADIUS = 250;
+const UNLOAD_RADIUS = 300;
 
 export class Terrain {
     constructor(material, seed=0) {
@@ -32,7 +34,7 @@ export class Terrain {
         // look to unload any that are far away
         const newChunks = [];
         for (let chunk of this.chunks) {
-            if ((chunk.x - x)**2 + (chunk.z - z)**2 > CHUNK_RADIUS**2) {
+            if ((chunk.x - x)**2 + (chunk.z - z)**2 > UNLOAD_RADIUS**2) {
                 this.chunksToUnload.push(chunk);
             } else {
                 newChunks.push(chunk);
@@ -41,9 +43,9 @@ export class Terrain {
         this.chunks = newChunks;
 
         // look to load any that are close
-        for (let dx = 0; dx < CHUNK_RADIUS; dx += (CHUNK_SIZE)) {
-            for (let dz = 0; dz < CHUNK_RADIUS; dz += (CHUNK_SIZE)) {
-                if (dx**2 + dz**2 > CHUNK_RADIUS**2) break;
+        for (let dx = 0; dx < LOAD_RADIUS; dx += (CHUNK_SIZE)) {
+            for (let dz = 0; dz < LOAD_RADIUS; dz += (CHUNK_SIZE)) {
+                if (dx**2 + dz**2 > LOAD_RADIUS**2) break;
                 this.loadChunk(x + dx, z + dz);
                 this.loadChunk(x + dx, z - dz);
                 this.loadChunk(x - dx, z + dz);
@@ -74,6 +76,7 @@ export class Terrain {
             const h = this.height(rd_x + x, rd_z + z);
             position.setY(i, h);
         }
+        geometry.computeVertexNormals();
 
         const mesh = new THREE.Mesh(geometry, this.material);
         mesh.position.x = rd_x;
