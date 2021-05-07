@@ -1,4 +1,5 @@
 import * as THREE from '../build/three.module.js'
+import { Battery } from './battery.js';
 import { GLTFLoader } from './GLTFLoader.js';
 
 export class CharacterController {
@@ -7,6 +8,9 @@ export class CharacterController {
         this.velocity = new THREE.Vector3();
         this.acceleration = new THREE.Vector3(1, 0.25, 50.0);
         this.deceleration = new THREE.Vector3(-0.0005, -0.0001, -5.0);
+
+        this.battery = new Battery();
+        this.isDead = false;
 
         this.input = new CharacterControllerInput();
         this.params = params;
@@ -45,6 +49,21 @@ export class CharacterController {
     update(time) {
         if (!this.target)
             return;
+
+        if (this.battery.level < 0.01) { 
+            this.isDead = true;
+            this.velocity.multiplyScalar(0);
+            return;
+        }
+
+        if (this.isDead) {
+            if (this.battery.level > 0.05) {
+                this.isDead = false;
+            } else {
+                return;
+            }
+        }
+
         // Compute velocity
         const velocity = this.velocity;
         const frameDeceleration = new THREE.Vector3(
@@ -106,7 +125,7 @@ export class CharacterController {
         this.target.position.y = this.params.terrain.height(
             this.target.position.x,
             this.target.position.z
-        ) + 0.05;
+        ) - 0.01;
 
         // Match terrain slope
         const up = new THREE.Vector3(0, 1, 0).applyQuaternion(this.target.quaternion).normalize();
@@ -114,7 +133,17 @@ export class CharacterController {
         const norm_rot = new THREE.Quaternion().setFromUnitVectors(up, norm);
         this.target.quaternion.premultiply(norm_rot);
 
+        // Update battery
+        const distance = new THREE.Vector3().subVectors(this.target.position, this.position).length();
+        const new_vel = distance / time;
+        this.battery.update(-0.00005 * new_vel);
+
         this.position.copy(this.target.position);
+
+        // Update sun light (since we want it to roughly follow the player)
+        this.params.sunlight.light.position.copy(this.params.sunlight.sun);
+        this.params.sunlight.light.position.multiplyScalar(500);
+        this.params.sunlight.light.position.add(this.position);
     }
 };
 

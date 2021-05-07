@@ -1,0 +1,23 @@
+.health-border {
+    position: relative;
+    top: 10px;
+    left: 10px;
+    width: 250px;
+    height: 25px;
+    border: 3px solid black;
+}
+  
+.health-bar {
+    position: absolute;
+    height: 25px;
+}
+  
+.health-value {
+    position: absolute;
+    margin: 0;
+    font-family: "Inter";
+    font-size: 15px;
+    line-height: 15px;
+    padding-top: 5px;
+    padding-left: 5px;
+}

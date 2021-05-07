@@ -15,8 +15,8 @@ function main() {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.5;
 
-    const stats = new Stats();
-    document.body.appendChild(stats.dom);
+    // const stats = new Stats();
+    // document.body.appendChild(stats.dom);
 
     // Add a camera
     const fov = 80, near = 0.1, far = 1000; 
@@ -33,8 +33,8 @@ function main() {
 
     renderer.shadowMapBias = 0.0039;
     renderer.shadowMapDarkness = 0.5;
-    renderer.shadowMapWidth = 1024;
-    renderer.shadowMapHeight = 1024;
+    // renderer.shadowMapWidth = 1024;
+    // renderer.shadowMapHeight = 1024;
 
     // Resize canvas when window is resized
     window.addEventListener('resize', () => {
@@ -57,18 +57,25 @@ function main() {
     scene.add(sunlight.sky);
     scene.add(sunlight.light);
     renderer.toneMappingExposure = sunlight.params.exposure;
+    // let shadowCamera = new THREE.CameraHelper(sunlight.light.shadow.camera);
+    // scene.add(shadowCamera);
 
     // Add ambiant light
     scene.add(new THREE.AmbientLight(0xFFFFFF, 0.15));
     scene.add(new THREE.DirectionalLight(0xFFFFFF, 0.15));
 
     // Add the ground
-    const material = new THREE.MeshPhongMaterial({
-        color: 0xbb491d,
-        flatShading: true,
-        reflectivity: 0.05,
-        shininess: 5
-    })
+    // const material = new THREE.MeshPhongMaterial({
+    //     // color: 0xbb491d,
+    //     vertexColors: true,
+    //     flatShading: true,
+    //     reflectivity: 0.05,
+    //     shininess: 5
+    // });
+    const material = new THREE.MeshLambertMaterial({
+        // color: 0xbb491d,
+        vertexColors: true
+    });
     const terrain = new Terrain(material, -100);
     for (let c of terrain.chunks) {
         if (c.needsLoaded) {
@@ -94,6 +101,10 @@ function main() {
             return;
         }
 
+        sunlight.update(deltaTime);
+        if (sunlight.elevation < 180)
+            player.battery.update(0.0005);
+
         player.update(deltaTime);
         thirdPersonCamera.update(deltaTime);
 
@@ -108,10 +119,7 @@ function main() {
             }
         }
 
-        sunlight.update(deltaTime);
-
-        stats.update();
-
+        // stats.update();
         requestAnimationFrame(render);
     }
     requestAnimationFrame(render);

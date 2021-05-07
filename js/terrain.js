@@ -1,7 +1,7 @@
 import * as THREE from '../build/three.module.js'
 
 const CHUNK_SIZE = 100;
-const GRID_SIZE = 20;
+const GRID_SIZE = 25;
 
 const LOAD_RADIUS = 250;
 const UNLOAD_RADIUS = 300;
@@ -83,11 +83,27 @@ export class Terrain {
         const geometry = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE, GRID_SIZE, GRID_SIZE);
         geometry.rotateX(-Math.PI / 2);
         const position = geometry.attributes.position;
+        geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(position.count * 3), 3))
+        const color = geometry.attributes.color;
+
         for (let i = 0; i < position.count; i++) {
             const x = position.getX(i);
             const z = position.getZ(i);
             const h = this.height(rd_x + x, rd_z + z);
             position.setY(i, h);
+
+            const rs = [];
+            rs.push(this.perlin.rand(rd_x + x, rd_z + z));
+            rs.push(this.perlin.rand(rd_x + x, -(rd_z + z)));
+            rs.push(this.perlin.rand(rd_x + x, 0));
+            rs.push(this.perlin.rand(0, rd_z + z));
+            let r = (rs.reduce((a, v) => a + v**2)) / rs.length;
+            if (r < 0.5) r = -r;
+            r *= 10;
+
+            color.setX(i, 0.733 + 0.0060 * (h - r));
+            color.setY(i, 0.286 + 0.0035 * (h - r));
+            color.setZ(i, 0.114 + 0.0020 * (h - r));
         }
         geometry.computeVertexNormals();
 
