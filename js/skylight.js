@@ -1,6 +1,6 @@
-import * as THREE from '../build/three.module.js'
+import * as THREE from './build/three.module.js'
 import { Sky } from './sky.js'
-import { GUI } from '../build/dat.gui.module.js'
+import { GUI } from './build/dat.gui.module.js'
 
 const DAY_LENGTH = 100 / 20; // seconds
 const NIGHT_LENGTH = 60 / 20; // seconds

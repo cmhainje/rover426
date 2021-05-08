@@ -1,10 +1,10 @@
-import * as THREE from '../build/three.module.js'
+import * as THREE from './build/three.module.js'
 import { CharacterController } from './controller.js'
 import { ThirdPersonCamera } from './camera.js'
 import { Terrain } from './terrain.js'
 import { SkyLight } from './skylight.js'
-import { GUI } from '../build/dat.gui.module.js'
-import Stats from '../build/stats.module.js'
+import { GUI } from './build/dat.gui.module.js'
+import Stats from './build/stats.module.js'
 
 function main() {
     // Set up three.js

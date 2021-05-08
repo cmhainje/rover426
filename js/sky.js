@@ -5,8 +5,8 @@ import {
 	ShaderMaterial,
 	UniformsUtils,
 	Vector3
-} from '../build/three.module.js';
-import * as jquery from '../build/jquery-3.6.0.js'
+} from './build/three.module.js';
+import * as jquery from './build/jquery-3.6.0.js'
 
 /**
  * Based on "A Practical Analytic Model for Daylight"

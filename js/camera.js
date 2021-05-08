@@ -1,4 +1,4 @@
-import * as THREE from '../build/three.module.js'
+import * as THREE from './build/three.module.js'
 
 export class ThirdPersonCamera {
     constructor(camera, controller, terrain) {
