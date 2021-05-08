@@ -28,7 +28,7 @@ export class CharacterController {
     load_model() {
         const loader = new GLTFLoader();
         loader.load(
-            '../assets/SpaceRover.gltf',
+            './assets/SpaceRover.gltf',
             (object) => {
                 this.target = object.scene;
                 this.target.scale.setScalar(0.3);
