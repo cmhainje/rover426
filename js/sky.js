@@ -28,19 +28,19 @@ class Sky extends Mesh {
 
 	constructor() {
 		const shader = Sky.SkyShader;
-		$.ajax({url: '../shaders/sky.frag', async: false}).done(data => { shader.fragmentShader = data; });
-		$.ajax({url: '../shaders/sky.vert', async: false}).done(data => { shader.vertexShader = data; });
+		$.ajax({url: './shaders/sky.frag', async: false}).done(data => { shader.fragmentShader = data; });
+		$.ajax({url: './shaders/sky.vert', async: false}).done(data => { shader.vertexShader = data; });
 
-		const material = new ShaderMaterial( {
+		const material = new ShaderMaterial({
 			name: 'SkyShader',
 			fragmentShader: shader.fragmentShader,
 			vertexShader: shader.vertexShader,
-			uniforms: UniformsUtils.clone( shader.uniforms ),
+			uniforms: UniformsUtils.clone(shader.uniforms),
 			side: BackSide,
 			depthWrite: false
-		} );
+		});
 
-		super( new BoxGeometry( 1, 1, 1 ), material );
+		super(new BoxGeometry( 1, 1, 1 ), material);
 	}
 }
 
