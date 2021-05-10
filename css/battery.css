@@ -15,7 +15,7 @@
 .health-value {
     position: absolute;
     margin: 0;
-    font-family: "Inter";
+    /* font-family: "Inter"; */
     font-size: 15px;
     line-height: 15px;
     padding-top: 5px;

@@ -9,7 +9,7 @@ function clamp(x, lo, hi) {
 export class Battery {
     constructor() {
         this.level = 1.0;
-        this.targetLevel = 1.0;
+        this.target = 1.0;
 
         this.border = document.createElement("div");
         this.border.setAttribute('class', 'health-border');

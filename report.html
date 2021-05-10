@@ -1,21 +1,120 @@
 <html>
 <head>
     <meta charset="utf-8"/>
-    <title>ROVER - Interim Report</title>
+    <title>Interim Report | ROVER</title>
+    <link rel="stylesheet" type="text/css" href="css/styles.css"/>
     <link rel="stylesheet" type="text/css" href="css/report.css"/>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
 </head>
 
 <body>
-    <div class="content">
-        <h1>ROVER: Interim Report</h1>
-        <h2>Abstract</h2>
-        <h2>Introduction</h2>
-        <h2>Methodology</h2>
-        <h2>Results</h2>
-        <h2>Discussion</h2>
-        <h2>Conclusions</h2>
-        <h2>Contributions</h2>
-        <h2>Works cited</h2>
-    </div>
+<div class="content">
+<h1>ROVER: Interim report</h1>
+
+<p class="date"><i>May 10, 2021</i></p>
+
+<p></p>
+
+<h1>Abstract</h1>
+
+<p>For this final project, my goal was to build a small game in which you play as a rover exploring Mars. The basic features I planned to implement were an infinite, procedurally-generated world in which the player, a Mars rover, would drive around and explore. To give the game a bit of a purpose, the player would search for various artifacts, randomly distributed about the map. Also, I wanted there to be a battery system, where moving around the map depletes the battery but stopping during the day time can charge the battery. Beyond this, the plan was to try to make the world look and feel convincing, to make the rover’s controls fun and intuitive, and to prioritize performance. I believe that I have delivered on most of these fronts, though there are a number of issues left to work on.</p>
+
+<p>For each of the features that I sought to include in the game, I will provide a brief description of my specific goals, my implementation, and a summary of the results of this implementation.</p>
+
+<h1>Procedurally-generated world</h1>
+
+<p>The core system of the game as I envisioned was the infinite, procedurally-generated world, and so it was also the first system that I completed. Specifically, I wanted a system that would generate a heightmap for the terrain using Perlin noise and load or unload chunks of the terrain as necessary while the player moved about.</p>
+
+<p>To start, I implemented a system for computing heightmaps using Perlin noise. I largely fleshed out this implementation for a custom shader in Assignment 3, so most of the system comes from there. The Perlin noise generator takes in the player’s position (specifically the x and z components) and finds the nearest coordinates to this position on a grid whose spacing is given by a customizable noise frequency. For each of the four closest such coordinates, a random two-dimensional gradient vector of length two is generated. The distance vector from the player position to the coordinate is then dotted with the gradient for each of the coordinates. We then do bilinear interpolation on the resulting values to obtain the value of the noise at the player position.</p>
+
+<p>One property of our Perlin noise, however, is that we cannot just use <code>Math.random()</code> to generate our two-dimensional gradient vectors. Instead, we need a function more akin to a hash function: the output should seem random for inputs which are near each other, but should always return the same output if given the same input. As such, we use the following function to compute a “random” number given an input (from <a href="https://stackoverflow.com/q/12964279">https://stackoverflow.com/q/12964279</a>)</p>
+
+<pre><code>rand(x,y) = (sin(12.9898*x + 78.233*y + seed) * 43758.5453) % 1;</code></pre>
+
+<p>where <code>seed</code> is a configurable parameter that we can vary for each player (e.g. by setting it equal to the time when they load the game). For now, I have <code>seed</code> set to <code>-100</code> because I found it gave nice looking terrain at the initial position. This function gives an approximately uniformly-random number in the interval (-1, 1). To make a two-dimensional vector from this, we find the random number corresponding to the grid coordinates, multiply it by 200π, then construct the vector <code>2(cos(r), sin(r))</code>.</p>
+
+<p>To actually compute the heightmap, then, I sample our Perlin noise at various positions on a grid and set the corresponding y-values. However, in order to achieve a nice looking result, we need to add different values of the noise with different amplitudes and frequencies. The combination that I found to look nice was </p>
+
+<pre><code>0.08 * perlin(x, z, 1 / 1.29)
++ 1.1 * perlin(x, z, 1 / 7.6)
++ 5.0 * perlin(x, z, 1 / 38.7)
++ 20.0 * perlin(x, z, 1 / 92.8)
++ 100.0 * perlin(x, z, 1 / 529)
+- 8</code></pre>
+
+<p>which I obtained purely through trial and error. The largest amplitude components have the smallest frequencies, as these define features of the terrain like mountains, hills, and valleys. Higher frequency noise components have smaller amplitudes, as these give rise to a feeling of rockiness in the terrain. </p>
+
+<p>Now that we have a heightmap, we need to actually make terrain out of it. This is done using the Three.js <code>PlaneGeometry</code>. We first make a simple plane geometry and rotate it by -π/2 about the x-axis to put it in the xz-plane. We then go through the vertices of the plane one-by-one. For each vertex, we get the x- and z-coordinates, find the corresponding height, and set the y-coordinate equal to this height. Lastly, we compute the vertex normals and load the geometry into a mesh that we’ll add to the scene.</p>
+
+<p>This is where we encounter our next problem, however. We can’t make an infinitely large <code>PlaneGeometry</code> with vertex heights computed and set for all the possible vertices. Instead, we need to break down the geometry into pieces that we’ll call “chunks” which we can load or unload as the player gets near. We will let each of these be its own square <code>PlaneGeometry</code> of size 100x100. We’ll then load a chunk in when the player is within 250 units of its center, and we’ll unload it when the player is farther than 300 units away.</p>
+
+<p>To load the chunk is simple. We follow the instructions I described above, making a geometry, setting all the y-values, making a mesh, and adding it to the scene. To unload a chunk, we simply remove the corresponding mesh from the scene and call <code>dispose()</code> on each of its components. On each frame, we’ll check if we exceed the unload distance from any loaded chunks or if there are any new, unloaded chunks within the loading radius, then carry out the corresponding actions if necessary. This is definitely not the most efficient way to do this, but it gives pretty good performance most of the time on my machine.</p>
+
+<p>As implemented, there are a few problems with the terrain generation that I would want to fix before really releasing this game out into the world to be played. The first is that there can sometimes be small stuttering as chunks are loaded in or out of the world. There certainly exist more efficient methods for loading and unloading chunks, and I’d like to find and explore some of these. The next is that the seams between chunks are pretty visually apparent when using smooth shading. I think this has to do with the fact that each vertex normal is computed using only information local to a chunk, so perhaps manually computing vertex normals for the vertices on the edges and using our height map to find the adjacent vertex positions outside the chunk would fix this problem. The last issue I have with my terrain generation system is how the edge of the loaded terrain is very easily visible, especially when the player is on the peaks of hills. It would be nice to add in some kind of low-res continuation of the terrain out to the horizon to help prevent this immersion break. I’ve heard that using octrees with variable resolution chunks can solve both this problem and the chunk loading/unloading efficiency issues; perhaps that would be good to look into.</p>
+
+<h1>Player movement</h1>
+
+<p>The next and possibly most obvious thing that needs to be implemented is a system by which players can interact with the game. For Rover, this is a system for player movement. Specifically, the goals for this feature were a system of event-handlers to capture key-down and key-up events and to communicate the corresponding movements to the player object and camera. We also want the camera to follow the player character from behind and above, but not from over the shoulder (like many third-person cameras). Lastly, we want the rover to actually look like it’s driving over the terrain, meaning that we need to handle terrain collisions and try to match the terrain slope.</p>
+
+<p>To implement this, I began by following SimonDev’s third person camera tutorial (<a href="https://www.youtube.com/watch?v=UuNPHOJ_V5o">https://www.youtube.com/watch?v=UuNPHOJ_V5o</a>). Overall, I felt quite satisfied with the mechanics provided by the resulting character and camera controller, but there were a few notable changes that needed to be made. Most importantly, SimonDev’s camera is an over-the-shoulder camera that does not avoid clipping through the terrain; we, however, need a more overhead camera that <em>does</em> respect the terrain. Second, the rover’s physical orientation should match that of the terrain to give the illusion of the wheels actually touching the ground. It should <em>not</em> remain perfectly aligned with xz-plane at all times. As such, my primary modifications to the character controller were in modifying the ideal camera offset from the player to better respect the terrain as well as modifying the rotation of the rover to match the slope of the terrain.</p>
+
+<p>To accomplish the better camera offset, we begin with an offset vector of (0, 0, -5) and apply the character’s rotation to this vector, so that the offset is 5 units behind the player. We then add the player position to it, giving us the real-world coordinates of the “ideal” camera position in x and z. Next, we need to account for the vertical camera offset, as the camera y-value is currently set to zero. On flat ground, I found an offset of 3 units looked nice, so we begin with that. For steep slopes, however, this often results in the camera clipping through the terrain. As such, we get the y-component of the player’s position and calculate the height of the terrain at the camera’s position. Then, we take the difference between these and dampen it slightly, multiplying by 0.75. This is added to our default offset of 3 units, and the result is added to the camera position, giving us an "ideal" camera position. We then use SimonDev's recommended method for smoothly changing the actual camera position toward this "ideal" position without any jumpiness or shakiness. I found that for all the terrain I tested it on, this kept the camera from clipping through the ground and provided a nice viewing angle for the rover.</p>
+
+<p>In order to make the rover match the terrain’s slope, we want to rotate the rover so that “up” in its local coordinate system matches the normal vector of the terrain at the rover’s position. Thus, we first make an up vector, <code>(0,1,0)</code>, and apply the rover’s <code>quaternion</code> to it to get the player’s local up vector. Then, we find the terrain normal at the player’s position. This is done crudely by finding the terrain height at a few points around the player, constructing vectors between these points, and taking the cross product. We can compute the rotation necessary to transform the player’s up vector into the normal vector using the Three.js quaternion’s <code>setFromAxisVectors</code> method. We can then apply the resulting quaternion to the rover by pre-multiplying it against the rover’s internal quaternion.</p>
+
+<p>In the end, I am actually really happy with the way that the player controls turned out. The rover feels really nice to control and the camera follows behind at a nice distance. The camera appears to take terrain into account really nicely, and I haven’t actually seen any instances of it clipping through the terrain. Also, the rotation that we compute and apply so that the rover appears to match the terrain slope I think is working really well. It is significantly more convincing than when it is omitted, and there are no weirdnesses that have come about as a result of messing with the rover’s quaternion.</p>
+
+<h1>Day-night cycle</h1>
+
+<p>The next feature I implemented was a day-night cycle. The fundamental goals for this were to have a shader that made a realistic-looking sky, a moving sun, and corresponding dynamic lighting with shadows and the like. We begin with the sky shader.</p>
+
+<p>To implement a realistic and atmospheric sky, I started with the code for this Three.js example: <a href="https://threejs.org/examples/webgl_shaders_sky">https://threejs.org/examples/webgl_shaders_sky</a>. The example provides an implementation of the Preetham sky model, which is an analytic model for describing a sky based on Rayleigh and Mie scattering of light off a planet’s atmosphere. By default, the shader includes an <code>elevation</code> parameter which controls the Sun’s position in the sky. Adding a small amount to this each frame gives a convincing representation of the Sun’s trajectory. I modified the amount added so that the Sun takes about 100 seconds to go from 0 to 180 degrees (the day time) and about 50 seconds to go from 180 to 360 (0) degrees.</p>
+
+<p>The result looks pretty nice for a representation of Earth’s sky, but unfortunately that doesn’t really work for Mars. There were a few changes I made to make the sky look a little more Martian. First, I modified the primary light wavelengths used in the scattering computations by swapping the red and blue wavelengths. The result: a red daytime sky and a blue sunset. This felt pretty odd at first, but some quick research indicates that Mars <em>does</em> indeed have blue sunsets, so this is accurate! Second, I played with the exposure and scattering parameters provided by the shader to achieve a combination that is a little more grayish and washed out than the original defaults, giving us a dustier, more accurate looking sky (for Mars).</p>
+
+<p>Next, I wanted to make a <code>DirectionalLight</code> which followed the position of the Sun used by the shader. At first, I simply added a directional light and set its position to equal the Sun’s on each frame. The result was far from convincing, however, because the Sun’s position is computed virtually inside a unit sphere centered at the origin. Thus, if the player moved away from the origin, the lighting became very bizarre. Instead, I took the Sun’s position on the unit sphere, multiplied it by a radius of 500, added the player’s position to it, and used this to set the light's position. Thus, the light is oriented at the same position as the Sun in the sky relative to the player.</p>
+
+<p>At this point, though, the light still lacked shadows and everything looked a little bad. So, I added shadows by enabling the light’s <code>castShadow</code> attribute. I also set the terrain and the player model to cast and receive shadows. Then, I modified the light’s shadow map and camera, giving both a significantly larger size than is default. This allowed the light to compute the shadows resulting both from the player model <em>and</em> from the hills in the terrain with relatively high resolution. </p>
+
+<p>Overall, I am quite happy with the way that the sky turned out. The result is somewhat realistic and gives nice looking shadows that dynamically change over the course of the day, alongside a nice-looking and accurate Martian sunset. The biggest issue I have with the implementation as it stands right now, however, is the drab blackness of the nighttime sky. With more time, I would love to be able to figure out how to add stars and to make the night sky look a lot more lively and realistic. There are also occasional graphical glitches with the directed light when the sun’s position is below the ground that would be good to fix.</p>
+
+<h1>Game systems</h1>
+
+<p>The other main aspects of the game that I wanted to include were features that would actually give the game a little more purpose so that the player is not just aimlessly driving around empty terrain. The first of these is a battery system: I want the rover to lose charge as it moves around, but slowly gain charge back in the sunlight. The second is an objective system: to give the player a goal for what to drive <em>toward</em>, I wanted to add randomly-placed objects along with a waypoint system for the player to go collect. By the time of this writing, I have been able to complete only the battery system, so that is what I’ll discuss below.</p>
+
+<p>For the battery, the main goal was to make a system that would track the rover’s battery charge while it moves about and/or gains charge and would display the charge live in a bar in the top left corner of the screen. To do this, I made a new class, <code>Battery</code>, and gave it two attributes: <code>level</code> and <code>target</code>. The <code>level</code> attribute stores the current charge level between 0 and 1, where the <code>target</code> stores the desired charge as a result of charging/discharging actions. We choose not to directly modify the <code>level</code> in order to make charging and discharging smooth between frames, similar to how we compute and modify the ideal camera offset instead of directly modifying the camera position in our camera controller.</p>
+
+<p>Then, we write an <code>update</code> method that takes as an argument the desired change in battery level. We set the new <code>target</code> equal to the current one plus the desired change, but clamped to lie between 0 and 1. Then, we compute our update to the battery level as <code>0.05 * (target - level)</code>. However, this will result in <code>level</code> never truly reaching the target value, so we add a provision that if this computed change is smaller than 0.005, we just set <code>level</code> equal to <code>target</code>.</p>
+
+<p>Next, we need to display these battery levels for the player to see. To do this, we add three HTML components to the screen. We add a <code>div</code> we’ll call “border”, a child <code>div</code> we’ll call “bar”, and as a child of the bar we add a <code>p</code> element we’ll call “value”. For styling, we let the border object have a white, solid border and no fill, representing the border of the maximum-charge bar. For the bar, we will dynamically the change the width to match the battery level and we’ll adjust the color, too. For the value text, we’ll display the actual battery level.</p>
+
+<p>To do this, we go into the <code>update</code> method. After the values of <code>target</code> and <code>level</code> have been updated, we change the width of the bar via <code>bar.style.width</code> to be <code>level</code>% of the border’s width. We then change the text in the value element via <code>value.innerHTML</code>, setting it equal to the floor of the battery level times one hundred, with an added % sign for styling. Last, we change the background color of the bar to be green if <code>level &gt; 0.8</code>, yellow if <code>level &gt; 0.3</code>, and red if neither. This seems to be working nicely.</p>
+
+<p>Lastly, we need to actually make the battery system <em>do</em> something by hooking it into the player movement. First, when we move the player, we’ll estimate the velocity by taking the distance moved in the frame divided by the time since the last frame. We then multiply this velocity by <code>-0.00005</code> to give us the desired change to the battery life, and call the battery’s <code>update</code> function with this change passed in as the argument. This gives us a draining battery as we move around, with higher battery drain when using the boost. Next, we add daylight charging by simply calling the battery’s <code>update</code> function to add 0.0005 to the charge for each frame during the day (i.e. when the Sun’s elevation is &lt; 180 degrees). Last, we apply a penalty when the battery level reaches zero. When this happens, we mark the rover as dead, setting the velocity to zero and skipping the player position update. We continue to do this until the charge reaches 5% again, at which the player may move around once more.</p>
+
+<p>In the end, I am fairly happy with the battery system as it functions at the moment. The battery status bar functions well and looks nice and the impact it has on the player is exactly as I intended. One definite shortcoming of the system is that it leaves the player completely stranded during the night, which could mean nearly a minute where the player literally cannot do anything. This is not exactly engaging gameplay. It <em>is</em> the intended result, though, so I’ll have to rethink whether there are any edits I would like to make to this to make it a little more fun. I’ll also mention that I still plan to implement the random navigation objectives as a feature; just after the submission of this interim report.</p>
+
+<h1>Conclusions</h1>
+
+<p>To conclude, I am quite happy with the status of the game at the moment. Most of the major features I wanted to include have been implemented and are (mostly) debugged. The world has a working chunk-loader and an infinite, procedurally-generated terrain. The rover has working and fun-to-use controls, complete with a battery system. The sky has a functioning day-night cycle with matching dynamic lighting and shadows. On the whole, I am quite satisfied with the progress I have made.</p>
+
+<p>There are a few obvious places for improvement, though, that I hope to tackle in the coming days. For example, the visible seams on chunk boundaries, the lack of true objectives for the player, etc. With more time, I would love to explore more sophisticated and efficient chunk-loaders, better sky aesthetics, terrain out to the horizon, ground textures, weather effects, and more, though I do worry about my ability to get to these things quickly. Perhaps this will become a passion project for me, I don’t know!</p>
+
+<h1>Works cited</h1>
+
+<p><a href="https://stackoverflow.com/q/12964279">https://stackoverflow.com/q/12964279</a> was used to make a “random” function for two-dimensional input.</p>
+
+<p><a href="https://www.youtube.com/watch?v=UuNPHOJ_V5o">https://www.youtube.com/watch?v=UuNPHOJ_V5o</a> was used as a basis for my player controller.</p>
+
+<p><a href="https://threejs.org/examples/webgl_shaders_sky">https://threejs.org/examples/webgl_shaders_sky</a> was used as a basis for the dynamic sky shading.</p>
+
+<p>The rover model comes from <a href="https://poly.google.com/view/dhLVA8z7cGo">https://poly.google.com/view/dhLVA8z7cGo</a>.</p>
+
+<p>Small snippets of code come from answers to StackOverflow questions, with citations provided in the code.</p>
+
+</div>
 </body>
 </html>

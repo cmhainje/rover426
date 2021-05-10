@@ -14,10 +14,10 @@ export class SkyLight {
         this.params = params;
         this.light = new THREE.DirectionalLight(0xFFFFFF, params.intensity, 100);
         this.light.castShadow = true;
-        this.light.shadow.mapSize.width = 10240; // default
-        this.light.shadow.mapSize.height = 10240; // default
-        this.light.shadow.camera.near = 0.5; // default
-        this.light.shadow.camera.far = 600; // default
+        this.light.shadow.mapSize.width = 10240;
+        this.light.shadow.mapSize.height = 10240;
+        this.light.shadow.camera.near = 0.5;
+        this.light.shadow.camera.far = 600;
 
         const shadowSize = 100;
         this.light.shadow.camera.left = -shadowSize;
@@ -54,7 +54,6 @@ export class SkyLight {
         const theta = THREE.MathUtils.degToRad(this.azimuth);
         this.sun.setFromSphericalCoords(1, phi, theta);
         this.sky.material.uniforms['sunPosition'].value.copy(this.sun);
-
         // this.light.position.copy(this.sun).multiplyScalar(100);
     }
 }

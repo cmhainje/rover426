@@ -1,0 +1,15 @@
+.content {
+    padding-top: 50px;
+    max-width: 680px;
+    margin: auto;
+    text-align: center;
+}
+
+h1 {
+    margin: 10px 0px;
+    font-size: 5em;
+}
+
+a {
+    color: inherit;
+}
